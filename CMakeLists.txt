@@ -9,7 +9,7 @@ endif()
 # --------------------------------------------------------------------------
 # Configurable options
 
-option(PSAPI_BUILD_STATIC "Build a static library version of the PhotoshopAPI" OFF)
+option(PSAPI_BUILD_STATIC "Build a static library version of the PhotoshopAPI" ON)
 option(PSAPI_BUILD_TESTS "Build the tests associated with the PhotoshopAPI" OFF)
 option(PSAPI_BUILD_EXAMPLES "Build the examples associated with the PhotoshopAPI" OFF)
 option(PSAPI_BUILD_BENCHMARKS "Build the benchmarks associated with the PhotoshopAPI" ON)
