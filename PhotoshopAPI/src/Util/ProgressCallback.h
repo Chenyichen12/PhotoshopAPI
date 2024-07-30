@@ -9,11 +9,11 @@ PSAPI_NAMESPACE_BEGIN
 
 
 /// A simple callback which can be attached to some of the most common read/write operations to query the status of the operation
-/// during execution especially when its a long running task. This querying should be done asynchronously by either launching the read/write 
+/// during execution especially when its a long running task. This querying should be done asynchronously by either launching the read/write
 /// asynchronously or in a different thread. The default constructor is the one that the user should be using most of the time
-/// as the called code will take over to calculate and set the max value as well as incrementing the counter. 
-/// 
-/// See the "ProgressCallback" example in the PhotoshopExamples/ folder of the repository for more information on how this can be 
+/// as the called code will take over to calculate and set the max value as well as incrementing the counter.
+///
+/// See the "ProgressCallback" example in the PhotoshopExamples/ folder of the repository for more information on how this can be
 /// achieved
 struct ProgressCallback
 {
@@ -45,10 +45,10 @@ struct ProgressCallback
 	/// Query whether the current progress is completed or if it is still running
 	inline bool isComplete() const noexcept { return m_Count == m_Max; }
 
-	// Increment the internal counter, will never increment past m_Max. This is called by the code 
-	// executing the long operation, not the user itself. 
+	// Increment the internal counter, will never increment past m_Max. This is called by the code
+	// executing the long operation, not the user itself.
 	// This function is thread-safe
-	inline void increment() noexcept 
+	virtual inline void increment() noexcept
 	{
 		std::lock_guard<std::mutex> guard(m_Mutex);
 		if (m_Count + 1 <= m_Max)
@@ -57,17 +57,17 @@ struct ProgressCallback
 			PSAPI_LOG_WARNING("Progress", "Incrementing the counter would exceed the maximum value of %zu, ignoring this increment", m_Max);
 	}
 
-	// Reset the internal counter back to 0. This is called by the code 
+	// Reset the internal counter back to 0. This is called by the code
 	// executing the long operation, not the user itself
 	// This function is not thread-safe
 	inline void resetCount() noexcept { m_Count = 0; }
 
-	// Set the max value the counter can increment to. This is called by the code 
+	// Set the max value the counter can increment to. This is called by the code
 	// executing the long operation, not the user itself
 	// This function is not thread-safe
 	inline void setMax(size_t max) noexcept { m_Max = max; m_IsInitialized = true; }
 
-	// Set the currently executing task. This is called by the code 
+	// Set the currently executing task. This is called by the code
 	// executing the long operation, not the user itself
 	// This function is thread-safe
 	inline void setTask(std::string task) noexcept { std::lock_guard<std::mutex> guard(m_Mutex); m_CurrentTask = task; }
