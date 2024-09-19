@@ -320,11 +320,17 @@ std::vector<uint8_t> CompressRLE(std::vector<T>& uncompressedData, std::span<uin
 
     // Compress each scanline while additionally overwriting the compressedDataViews with a properly sized span
     // rather than aligned to maxScanlineSize
+    #ifdef __APPLE__
+    std::for_each( verticalIter.begin(), verticalIter.end(), [&](const auto index)
+        {
+            compressedDataViews[index] = RLE_Impl::CompressPackBits(uncompressedDataViews[index], compressedDataViews[index]);
+        });
+#else
     std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](const auto index)
         {
             compressedDataViews[index] = RLE_Impl::CompressPackBits(uncompressedDataViews[index], compressedDataViews[index]);
         });
-
+#endif
     // We now take the data out of the buffer and copy them over in parallel
     std::vector<uint8_t> compressedData;
     if (header.m_Version == Enum::Version::Psd)
@@ -339,13 +345,21 @@ std::vector<uint8_t> CompressRLE(std::vector<T>& uncompressedData, std::span<uin
             totalSize += compressedDataViews[y].size();
         }
         compressedData = std::vector<uint8_t>(totalSize);
-
-        std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](const auto index)
+#ifdef __APPLE__
+        std::for_each(  verticalIter.begin(), verticalIter.end(), [&](const auto index)
             {
                 const uint8_t* srcAddress = compressedDataViews[index].data();
                 uint8_t* dstAddress = compressedData.data() + scanlineOffsets[index];
                 std::memcpy(dstAddress, srcAddress, compressedDataViews[index].size());
             });
+            #else
+            std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](const auto index)
+            {
+                const uint8_t* srcAddress = compressedDataViews[index].data();
+                uint8_t* dstAddress = compressedData.data() + scanlineOffsets[index];
+                std::memcpy(dstAddress, srcAddress, compressedDataViews[index].size());
+            });
+            #endif
         // We deliberately only copy over the scanline sizes at the end since they need to be endian swapped first
         endianEncodeBEArray(scanlineSizes);
         std::memcpy(compressedData.data(), reinterpret_cast<uint8_t*>(scanlineSizes.data()), height * sizeof(uint16_t));
@@ -362,13 +376,21 @@ std::vector<uint8_t> CompressRLE(std::vector<T>& uncompressedData, std::span<uin
             totalSize += compressedDataViews[y].size();
         }
         compressedData = std::vector<uint8_t>(totalSize);
-
-        std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](auto& index)
+#ifdef __APPLE__
+        std::for_each(  verticalIter.begin(), verticalIter.end(), [&](auto& index)
             {
                 const uint8_t* srcAddress = compressedDataViews[index].data();
                 uint8_t* dstAddress = compressedData.data() + scanlineOffsets[index];
                 std::memcpy(dstAddress, srcAddress, compressedDataViews[index].size());
             });
+            #else
+            std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](auto& index)
+            {
+                const uint8_t* srcAddress = compressedDataViews[index].data();
+                uint8_t* dstAddress = compressedData.data() + scanlineOffsets[index];
+                std::memcpy(dstAddress, srcAddress, compressedDataViews[index].size());
+            });
+            #endif
         // We deliberately only copy over the scanline sizes at the end since they need to be endian swapped first
         endianEncodeBEArray(scanlineSizes);
         std::memcpy(compressedData.data(), reinterpret_cast<uint8_t*>(scanlineSizes.data()), height * sizeof(uint32_t));

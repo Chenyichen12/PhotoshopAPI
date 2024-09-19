@@ -208,7 +208,8 @@ void DecompressRLE(ByteStream& stream, std::span<T> buffer, uint64_t offset, con
     {
         PROFILE_SCOPE("DecompressPackBits");
         // Decompress using the PackBits algorithm
-        std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](auto index)
+        #ifdef __APPLE__
+        std::for_each(verticalIter.begin(), verticalIter.end(), [&](auto index)
             {
 #ifdef __AVX2__
                 RLE_Impl::DecompressPackBitsAVX2<T>(compressedDataSpans[index], decompressedDataSpans[index]);
@@ -216,6 +217,16 @@ void DecompressRLE(ByteStream& stream, std::span<T> buffer, uint64_t offset, con
                 RLE_Impl::DecompressPackBits<T>(compressedDataSpans[index], decompressedDataSpans[index]);
 #endif
             });
+            #else
+            std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](auto index)
+            {
+#ifdef __AVX2__
+                RLE_Impl::DecompressPackBitsAVX2<T>(compressedDataSpans[index], decompressedDataSpans[index]);
+#else
+                RLE_Impl::DecompressPackBits<T>(compressedDataSpans[index], decompressedDataSpans[index]);
+#endif
+            });
+            #endif
     }
     // Convert decompressed data to native endianness in-place
     endianDecodeBEArray(buffer);

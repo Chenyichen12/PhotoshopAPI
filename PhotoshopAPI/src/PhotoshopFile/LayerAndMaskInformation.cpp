@@ -1195,7 +1195,11 @@ void LayerInfo::read(File& document, const FileHeader& header, ProgressCallback&
 
 	// Read the Channel Image Instances
 	std::vector<ChannelImageData> localResults(m_LayerRecords.size());
+	#ifdef __APPLE__
+	std::for_each(   m_LayerRecords.begin(), m_LayerRecords.end(), [&](const LayerRecord& layerRecord)
+	#else
 	std::for_each(std::execution::par, m_LayerRecords.begin(), m_LayerRecords.end(), [&](const LayerRecord& layerRecord)
+	#endif
 	{
 		callback.setTask("Reading Layer: " + std::string(layerRecord.m_LayerName.getString()));
 		int index = &layerRecord - &m_LayerRecords[0];
@@ -1298,7 +1302,11 @@ void LayerInfo::write(File& document, const FileHeader& header, ProgressCallback
 	WriteBinaryData(document, static_cast<int16_t>(m_LayerRecords.size()));
 
 	// Loop over the individual layers and compress them while also storing the channel information
+	#ifdef __APPLE__
+	std::for_each(m_ChannelImageData.begin(), m_ChannelImageData.end(),
+	#else
 	std::for_each(std::execution::par, m_ChannelImageData.begin(), m_ChannelImageData.end(),
+	#endif
 		[&](ChannelImageData& channel)
 		{
 			// Get a unique index for each of the layers to compress them in random order

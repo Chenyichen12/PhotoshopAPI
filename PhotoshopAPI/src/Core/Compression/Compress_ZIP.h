@@ -79,7 +79,8 @@ namespace ZIP_Impl
 			// First de-interleave the data to planar byte order, i.e. going from 1234 1234 1234 1234 to 1111 2222 3333 4444
 			// We essentially split each scanline into 4 equal parts each holding the first, second, third and fourth of the original bytes
 			// We also convert to big endian order which is what is stored on disk
-			std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](uint32_t y)
+			#ifdef __APPLE__
+			std::for_each(   verticalIter.begin(), verticalIter.end(), [&](uint32_t y)
 				{
 					// Binary view into the whole scanline
 					std::span<uint8_t> scanlineView(byteDataView.data() + y * width * sizeof(float32_t), width * sizeof(float32_t));
@@ -88,12 +89,24 @@ namespace ZIP_Impl
 					// Copy over the memory from the buffer into the data
 					std::memcpy(scanlineView.data(), scanlineBuffer.data(), scanlineView.size());
 				});
+				#else
+				std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(), [&](uint32_t y)
+				{
+					// Binary view into the whole scanline
+					std::span<uint8_t> scanlineView(byteDataView.data() + y * width * sizeof(float32_t), width * sizeof(float32_t));
+					std::span<uint8_t> scanlineBuffer(buffer.data() + y * width * sizeof(float32_t), width * sizeof(float32_t));
+					interleavedToPlanarFloat(scanlineView, scanlineBuffer, width);
+					// Copy over the memory from the buffer into the data
+					std::memcpy(scanlineView.data(), scanlineBuffer.data(), scanlineView.size());
+				});
+				#endif
 		}
 
 		{
 			PROFILE_SCOPE("32-bit binary prediction encode");
 			// Perform the prediction encoding of the data, keep in mind that this is done byte by byte
-			std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(),
+			#ifdef __APPLE__
+			std::for_each(   verticalIter.begin(), verticalIter.end(),
 				[&](uint32_t y)
 				{
 					// Generate a non-overlapping view of each row of the data
@@ -109,6 +122,24 @@ namespace ZIP_Impl
 						prev = curr;
 					}
 				});
+				#else
+				std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(),
+				[&](uint32_t y)
+				{
+					// Generate a non-overlapping view of each row of the data
+					uint8_t* dataRowOffset = reinterpret_cast<uint8_t*>(data.data() + static_cast<uint64_t>(y) * width);
+					std::span<uint8_t> dataView(dataRowOffset, width * sizeof(float32_t));
+
+					uint8_t prev = dataView[0];
+					for (uint32_t x = 1; x < width * sizeof(float32_t); ++x)
+					{
+						uint8_t curr = dataView[x];
+						// Generate the difference between the current value and the next one and store it
+						dataView[x] = curr - prev;
+						prev = curr;
+					}
+				});
+				#endif
 		}
 	}
 

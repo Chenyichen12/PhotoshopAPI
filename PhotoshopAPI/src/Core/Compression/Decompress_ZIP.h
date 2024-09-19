@@ -84,7 +84,8 @@ namespace ZIP_Impl
 		std::vector<uint32_t> verticalIter = createVerticalImageIterator(height);
 
 		// Perform prediction decoding per scanline of data in-place
-		std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(),
+		#ifdef __APPLE__
+		std::for_each(  verticalIter.begin(), verticalIter.end(),
 			[&](uint32_t y)
 			{
 				for (uint64_t x = 1; x < width; ++x)
@@ -93,6 +94,17 @@ namespace ZIP_Impl
 					decompressedData[static_cast<uint64_t>(width) * y + x] += decompressedData[static_cast<uint64_t>(width) * y + x - 1];
 				}
 			});
+			#else
+			std::for_each(std::execution::par, verticalIter.begin(), verticalIter.end(),
+			[&](uint32_t y)
+			{
+				for (uint64_t x = 1; x < width; ++x)
+				{
+					// Simple differencing: decode by adding the difference to the previous value
+					decompressedData[static_cast<uint64_t>(width) * y + x] += decompressedData[static_cast<uint64_t>(width) * y + x - 1];
+				}
+			});
+			#endif
 	}
 
 
